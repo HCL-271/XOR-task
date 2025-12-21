@@ -1,0 +1,14 @@
+[project]
+name = "hello-py"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12.3"
+dependencies = [
+    "anthropic>=0.67.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[tool.setuptools]
+py-modules = ["main", "task"]
