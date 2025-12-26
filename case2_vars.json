@@ -1,0 +1,173 @@
+{
+  "case_id": "case2_vars",
+  "description": "Variable-driven case: active_states array + FX rates vars + strict valid_to_dttm > as_of_ts. Params must be extracted from SQL.",
+  "as_of_date": "2025-02-01",
+  "as_of_ts": "2025-02-01 00:00:00",
+  "procedure_sql": "CREATE OR REPLACE PROCEDURE pre_dm.load_dim_active_agree_case2()\nLANGUAGE plpgsql\nAS $procedure$\nDECLARE\n    v_today DATE := DATE '2025-02-01';\n    v_now   TIMESTAMP := TIMESTAMP '2025-02-01 00:00:00';\n\n    -- FX multipliers (int for this toy task)\n    v_usd_rate INTEGER := 87;\n    v_eur_rate INTEGER := 103;\n    v_default_rate INTEGER := 2;\n\n    -- NOTE: OVERDUE is NOT active in this case.\n    v_active_states TEXT[] := ARRAY['ACTIVE', 'OPEN'];\nBEGIN\n    TRUNCATE TABLE pre_dm.dim_active_agree;\n\n    INSERT INTO pre_dm.dim_active_agree\n    SELECT\n        ag.agree_sk,\n        ag.open_dt AS agree_open_dt,\n        ag.close_dt AS agree_close_dt,\n        ag.agree_state,\n\n        CASE\n            WHEN ag.agree_state = ANY(v_active_states) THEN TRUE\n            ELSE FALSE\n        END AS is_active,\n\n        v_today - ag.open_dt AS agree_age_days,\n\n        CASE\n            WHEN ag.close_dt IS NOT NULL THEN ag.close_dt - ag.open_dt\n            ELSE v_today - ag.open_dt\n        END AS agree_duration_day_cnt,\n\n        CASE\n            WHEN ag.currency_name = 'RUB' THEN ag.open_amt\n            ELSE ag.open_amt *\n                CASE\n                    WHEN ag.currency_name = 'USD' THEN v_usd_rate\n                    WHEN ag.currency_name = 'EUR' THEN v_eur_rate\n                    ELSE v_default_rate\n                END\n        END AS open_rub_amt,\n\n        v_now AS etl_updated_dttm\n    FROM dds.dim_agree ag\n    WHERE\n        (ag.valid_to_dttm IS NULL OR ag.valid_to_dttm > v_now)\n        AND ag.source_system = 'Автоматизированная банковская система';\nEND;\n$procedure$;",
+  "inputs": {
+    "dds.dim_agree": [
+      {
+        "agree_sk": 10,
+        "open_dt": "2025-01-31",
+        "close_dt": null,
+        "agree_state": "ACTIVE",
+        "currency_name": "RUB",
+        "open_amt": 10,
+        "valid_to_dttm": null,
+        "source_system": "Автоматизированная банковская система"
+      },
+      {
+        "agree_sk": 11,
+        "open_dt": "2025-01-15",
+        "close_dt": null,
+        "agree_state": "OPEN",
+        "currency_name": "USD",
+        "open_amt": 2,
+        "valid_to_dttm": null,
+        "source_system": "Автоматизированная банковская система"
+      },
+      {
+        "agree_sk": 12,
+        "open_dt": "2025-01-01",
+        "close_dt": null,
+        "agree_state": "OVERDUE",
+        "currency_name": "EUR",
+        "open_amt": 1,
+        "valid_to_dttm": null,
+        "source_system": "Автоматизированная банковская система"
+      },
+      {
+        "agree_sk": 13,
+        "open_dt": "2025-01-01",
+        "close_dt": null,
+        "agree_state": "ACTIVE",
+        "currency_name": "USD",
+        "open_amt": 3,
+        "valid_to_dttm": "2025-02-01 00:00:00",
+        "source_system": "Автоматизированная банковская система"
+      },
+      {
+        "agree_sk": 14,
+        "open_dt": "2025-01-20",
+        "close_dt": null,
+        "agree_state": "ACTIVE",
+        "currency_name": "GBP",
+        "open_amt": 2,
+        "valid_to_dttm": null,
+        "source_system": "Автоматизированная банковская система"
+      },
+      {
+        "agree_sk": 15,
+        "open_dt": "2025-01-10",
+        "close_dt": "2025-01-25",
+        "agree_state": "CLOSED",
+        "currency_name": "RUB",
+        "open_amt": 5,
+        "valid_to_dttm": null,
+        "source_system": "Автоматизированная банковская система"
+      },
+      {
+        "agree_sk": 16,
+        "open_dt": "2025-01-25",
+        "close_dt": null,
+        "agree_state": "ACTIVE",
+        "currency_name": "USD",
+        "open_amt": 1,
+        "valid_to_dttm": null,
+        "source_system": "CRM"
+      }
+    ]
+  },
+  "required_target_cols": [
+    "agree_sk",
+    "agree_open_dt",
+    "agree_close_dt",
+    "agree_state",
+    "is_active",
+    "agree_age_days",
+    "agree_duration_day_cnt",
+    "open_rub_amt",
+    "etl_updated_dttm"
+  ],
+  "allowed_transforms": [
+    "direct_copy",
+    "calc_is_active",
+    "calc_agree_age_days",
+    "calc_agree_duration_day_cnt",
+    "calc_open_rub_amt",
+    "system_etl_updated_dttm"
+  ],
+  "expected_output": [
+    {
+      "agree_sk": 10,
+      "agree_open_dt": "2025-01-31",
+      "agree_close_dt": null,
+      "agree_state": "ACTIVE",
+      "is_active": true,
+      "agree_age_days": 1,
+      "agree_duration_day_cnt": 1,
+      "open_rub_amt": 10,
+      "etl_updated_dttm": "2025-02-01 00:00:00"
+    },
+    {
+      "agree_sk": 11,
+      "agree_open_dt": "2025-01-15",
+      "agree_close_dt": null,
+      "agree_state": "OPEN",
+      "is_active": true,
+      "agree_age_days": 17,
+      "agree_duration_day_cnt": 17,
+      "open_rub_amt": 174,
+      "etl_updated_dttm": "2025-02-01 00:00:00"
+    },
+    {
+      "agree_sk": 12,
+      "agree_open_dt": "2025-01-01",
+      "agree_close_dt": null,
+      "agree_state": "OVERDUE",
+      "is_active": false,
+      "agree_age_days": 31,
+      "agree_duration_day_cnt": 31,
+      "open_rub_amt": 103,
+      "etl_updated_dttm": "2025-02-01 00:00:00"
+    },
+    {
+      "agree_sk": 14,
+      "agree_open_dt": "2025-01-20",
+      "agree_close_dt": null,
+      "agree_state": "ACTIVE",
+      "is_active": true,
+      "agree_age_days": 12,
+      "agree_duration_day_cnt": 12,
+      "open_rub_amt": 4,
+      "etl_updated_dttm": "2025-02-01 00:00:00"
+    },
+    {
+      "agree_sk": 15,
+      "agree_open_dt": "2025-01-10",
+      "agree_close_dt": "2025-01-25",
+      "agree_state": "CLOSED",
+      "is_active": false,
+      "agree_age_days": 22,
+      "agree_duration_day_cnt": 15,
+      "open_rub_amt": 5,
+      "etl_updated_dttm": "2025-02-01 00:00:00"
+    }
+  ],
+  "expected_params": {
+    "calc_is_active": {
+      "active_states": [
+        "ACTIVE",
+        "OPEN"
+      ]
+    },
+    "calc_open_rub_amt": {
+      "base_currency": "RUB",
+      "rates": {
+        "USD": 87,
+        "EUR": 103
+      },
+      "default_rate": 2
+    }
+  }
+}

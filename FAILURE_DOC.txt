@@ -1,0 +1,13 @@
+Reasons for model failures
+1. The model missed required parameters. For example, 'active_states' should contain '['ACTIVE', 'OVERDUE']'. This is possible because the model lacks information about the markup rules.
+2. Failure due to incorrect filtering (WHERE clause). If the model misunderstands the procedure and filters the wrong rows, it fails. This is especially important when filtering by 'source_system' and 'valid_to_dttm'.
+3. The model may incorrectly apply transformations such as 'calc_is_active' or 'calc_open_rub_amt'. Again, this is due to the procedure's understanding.
+4. My favorite: the original procedures are huge, and because of this, the model incorrectly identifies the source table, the resulting table, and may assign an attribute to a temporary table that is created in the procedure and definitely does not exist in the output.
+There may simply be errors in which attribute belongs to which table.
+
+Причины сбоев модели
+1.	Модель пропустила необходимые параметры. Например, `active_states` должен содержать `['ACTIVE', 'OVERDUE']`. Такое возможно, так как у модели нет информации о правилах разметки.
+2.	Сбой из-за некорректной фильтрации (предложение WHERE). Если модель нерпавильно понимает процедуру и фильтрует не те строки, это провал. Это особенно важно при фильтрации по `source_system` и `valid_to_dttm`.
+3.	Модель может неправильно применить преобразование такие как `calc_is_active`, `calc_open_rub_amt`. Опять же, дело в понимании процедуры
+4.	Моё любимое: в оригинале процедуры  огромные и из-за этого модель неправильно определяет таблицу-источник, результирующую таблицу и может отнести атрибут к временной таблице, которую создаём в процедуре и которой на выходе точно нет.
+Здесь просто возможны ошибки в том, какой атрибут к какой таблице относится
