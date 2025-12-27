@@ -85,7 +85,7 @@ async def run_agent_loop(
     tools: list[ToolUnionParam],
     tool_handlers: dict[str, Callable[..., Any]],
     max_steps: int = 20,
-    model: str = "claude-haiku-4-5",
+    model: str = "  ",
     verbose: bool = True,
     *,
     client: Optional[AsyncAnthropic] = None,
